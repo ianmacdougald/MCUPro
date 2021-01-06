@@ -3,7 +3,7 @@ MCUPro {
 	classvar <srcID = 1835008;
 
 	var <server;
-	var midiout;
+	var <midiout;
 	var midiin;
 	var midiFuncs;
 	var callibrator;
@@ -104,7 +104,7 @@ MCUPro {
 				{ note < 9 }
 				{
 					//Vpot
-					cc = vpotActions[note][1];
+					cc = vpotActions[note][0];
 					if(difference >= 65){
 						cc = cc - (difference - 65);
 					} /*else*/ {
@@ -130,23 +130,23 @@ MCUPro {
 		));
 
 		//Instantiate dictionary of actions
-		faderActions = Array.fill(9, {
-			[ 0, MCUAction.bend(midiout, channel, {}) ];
+		faderActions = Array.fill(9, { | i |
+			[ 0, MCUAction.bend(midiout, i, {}) ];
 		});
 
-		vpotActions = Array.fill(8, {
-			[ 0, MCUAction.cc(midiout, channel, {}) ];
+		vpotActions = Array.fill(8, { | i |
+			[ 0, MCUAction.cc(midiout, i, {}) ];
 		});
 
-		onActions = Array.fill(127, {
-			[ 0, MCUAction.noteOn(midiout, channel, {}) ];
+		onActions = Array.fill(127, { | i |
+			[ 0, MCUAction.noteOn(midiout, i, {}) ];
 		});
 
-		offActions = Array.fill(127, {
-			[ 0, MCUAction.noteOff(midiout, channel, {}) ];
+		offActions = Array.fill(127, { | i |
+			[ 0, MCUAction.noteOff(midiout, i, {}) ];
 		});
 
-		jogAction = [ 0, MCUAction.cc(midiout, channel, {}) ];
+		jogAction = [ 0, MCUAction.cc(midiout, 44, {}) ];
 
 		this.callibrate;
 	}
@@ -199,7 +199,7 @@ MCUPro {
 	callibrate { | dur(0.5) |
 		//Set the faders to top then 0.
 		if(callibrator.isPlaying, { callibrator.stop });
-		callibrator = fork {
+		callibrator = forkIfNeeded {
 			var all = {
 				| level(0) |
 				(0..8).do { | i | midiout.bend(i, level) };
@@ -211,7 +211,7 @@ MCUPro {
 
 		//Make sure all of the buttons are off.
 		(0..127).do { | i |
-			midiout.noteOff(0, i, 127);
+			midiout.noteOn(0, i, 0);
 		};
 
 		buttons = 0 ! 127;
@@ -237,6 +237,19 @@ MCUPro {
 	addJogAction { | function({}) |
 		jogAction[1] = function;
 	}
+
+	free {
+		fork {
+			this.callibrate;
+			midiFuncs.asArray.do(_.free);
+			this.disconnect;
+		}
+	}
+
+	disconnect {
+		//disconnect midi out and in per platform
+	}
+
 }
 
 //Evaluates a function for each fader, vpot, transport control, and otherwise.
@@ -265,11 +278,13 @@ MCUAction {
 
 	value { | ... args |
 		function.valueArray(args);
-		if(outType!=\cc){
-			midiout.perform(outType, channel, args[0]);
-		};
+		case
+		{ outType == \noteOn or: { outType == \noteOff } }{
+			midiout.perform(outType, 0, channel, args[0]);
+		}
+		{ outType == \cc }{ }
+		{ midiout.perform(outType, channel, args[0]) };
 	}
-
 }
 
 //Reads automation written on behalf of each fader and vpot
