@@ -1,4 +1,4 @@
-# MCUPRo 
+# MCUPro 
 
 This quark facilitates the usage of the Mackie MCU Pro in SuperCollider. 
 
