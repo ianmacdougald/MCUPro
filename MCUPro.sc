@@ -5,10 +5,9 @@ MCUPro {
 	var <server;
 	var <midiout;
 	var midiin;
-	var midiFuncs;
+	var <midiFuncs;
 	var callibrator;
 	var recorder;
-	var <buttons, <faders;
 	var recFunc, <>recPath;
 	var player, <prevPath;
 	var recording;
@@ -46,19 +45,16 @@ MCUPro {
 		this.server_(Server.default);
 
 		//Set up midi functions
-		midiFuncs = IdentityDictionary.new;
+		midiFuncs = IdentityDictionary.new.know_(true);
 		midiFuncs.add(\noteOn -> MIDIFunc.noteOn(
 			{ | velocity, note, channel, id |
-				var flag = onActions[note][0];
+				var flag = onActions[note].value;
 				if(flag == 127){
 					flag = 0;
 				} /*else*/{
 					flag = 127;
 				};
-				onActions[note][0] = flag;
-				onActions[note][1].value(
-					onActions[note][0];
-				);
+				onActions[note].valueAction = flag;
 				/*		buttons[index] = 1;
 				midiout.noteOn(val[2], val[1], 127);
 				switch(val[1],
@@ -72,58 +68,52 @@ MCUPro {
 
 		midiFuncs.add(\noteOff -> MIDIFunc.noteOff(
 			{ | velocity, note, channel, id |
-				var flag = offActions[note][0];
+				var flag = offActions[note].value;
 				if(flag == 127){
 					flag = 0;
 				} /*else*/ {
 					flag = 127;
 				};
-				offActions[note][0] = flag;
-				offActions[note][1].value(
-					offActions[note][0]
-				);
+				// offActions[note].valueAction = flag;
+				/*offActions[note][1].value(
+				offActions[note][0]
+				);*/
 			},
 			srcID: this.class.srcID
 		));
 
 		midiFuncs.add(\bend -> MIDIFunc.bend(
 			{ | bend, note |
-				faderActions[note][0] = bend;
-				faderActions[note][1].value(
-					faderActions[note][0]
-				);
+				faderActions[note].valueAction = bend;
 			},
 			srcID: this.class.srcID
 		));
 
 		midiFuncs.add(\cc -> MIDIFunc.cc(
-			{ | difference, note |
+			{ | delta, note |
 				var cc;
 				note = note - 16;
 				case
 				{ note < 9 }
 				{
+					var toAdd = delta;
 					//Vpot
-					cc = vpotActions[note][0];
-					if(difference >= 65){
-						cc = cc - (difference - 65);
-					} /*else*/ {
-						cc = cc + difference;
+					cc = vpotActions[note].value;
+					if(delta >= 65){
+						toAdd = delta - 65 * -1;
 					};
-					vpotActions[note][0] = cc.clip(0.0, 127.0);
-					vpotActions[note][1].value(vpotActions[note][0], difference);
+					cc = cc + toAdd;
+					vpotActions[note].delta = delta;
+					vpotActions[note].valueAction = cc.clip(0.0, 127.0);
 				}
 				{ note == 44 }{
-					cc = jogAction[0];
-					if(difference == 1){
+					cc = jogAction[0].value;
+					if(delta == 1){
 						cc = cc + 1;
 					} /*else*/ {
 						cc = cc - 1;
-						difference = 1;
 					};
-					jogAction[0] = cc.wrap(0.0, 127.0);
-					jogAction[1].value(jogAction[0], 1);
-					jogAction.postln;
+					jogAction[0].valueAction = cc.wrap(0.0, 127.0);
 				};
 			},
 			srcID: this.class.srcID
@@ -131,22 +121,22 @@ MCUPro {
 
 		//Instantiate dictionary of actions
 		faderActions = Array.fill(9, { | i |
-			[ 0, MCUAction.bend(midiout, i, {}) ];
+			MCUAction.bend(midiout, i, {});
 		});
 
 		vpotActions = Array.fill(8, { | i |
-			[ 0, MCUAction.cc(midiout, i, {}) ];
+			MCUAction.cc(midiout, i, {});
 		});
 
 		onActions = Array.fill(127, { | i |
-			[ 0, MCUAction.noteOn(midiout, i, {}) ];
+			MCUAction.noteOn(midiout, i, {});
 		});
 
 		offActions = Array.fill(127, { | i |
-			[ 0, MCUAction.noteOff(midiout, i, {}) ];
+			MCUAction.noteOff(midiout, i, {});
 		});
 
-		jogAction = [ 0, MCUAction.cc(midiout, 44, {}) ];
+		jogAction = [ MCUAction.cc(midiout, 44, {}) ];
 
 		this.callibrate;
 	}
@@ -213,29 +203,26 @@ MCUPro {
 		(0..127).do { | i |
 			midiout.noteOn(0, i, 0);
 		};
-
-		buttons = 0 ! 127;
-		faders = 0 ! 127;
 	}
 
-	addFaderAction { | faderNum(0), function({}) |
-		faderActions[ faderNum % faderActions.size ][1] = function;
+	addFaderAction { | num(0), action({}) |
+		faderActions[ num % faderActions.size ].action = action;
 	}
 
-	addOnAction { | buttonNum(0), function({}) |
-		onActions[ buttonNum % onActions.size ][1] = function;
+	addOnAction { | num(0), action({}) |
+		onActions[ num % onActions.size ].action = action;
 	}
 
-	addOffAction { | buttonNum(0), function({}) |
-		offActions[ buttonNum % offActions.size ][1] = function;
+	addOffAction { | num(0), action({}) |
+		offActions[ num % offActions.size ].action = action;
 	}
 
-	addVPotAction { | vpotNum(0), function({}) |
-		vpotActions[ vpotNum % vpotActions.size ][1] = function;
+	addVPotAction { | vpotNum(0), action({}) |
+		vpotActions[ vpotNum % vpotActions.size ].action = action;
 	}
 
-	addJogAction { | function({}) |
-		jogAction[1] = function;
+	addJogAction { | action({}) |
+		jogAction[0].action = action;
 	}
 
 	free {
@@ -254,36 +241,52 @@ MCUPro {
 
 //Evaluates a function for each fader, vpot, transport control, and otherwise.
 MCUAction {
-	var <>outType, <>midiout, <>channel, function;
+	var <>outType, <>midiout, <>channel, <>action;
+	var <>value = 0, <>delta = 1;
 
-	*new { | outType(\noteOn), midiout, channel(0), function({}) |
-		^super.newCopyArgs(outType, midiout, channel, function);
+	*new { | outType(\noteOn), midiout, channel(0), action({}) |
+		^super.newCopyArgs(outType, midiout, channel, action);
 	}
 
-	*bend { | midiout, channel, function |
-		^this.new(\bend, midiout, channel, function);
+	*bend { | midiout, channel, action |
+		^this.new(\bend, midiout, channel, action);
 	}
 
-	*noteOn { | midiout, channel, function |
-		^this.new(\noteOn, midiout, channel, function);
+	*noteOn { | midiout, channel, action |
+		^this.new(\noteOn, midiout, channel, action);
 	}
 
-	*noteOff { | midiout, channel, function |
-		^this.new(\noteOff, midiout, channel, function);
+	*noteOff { | midiout, channel, action |
+		^this.new(\noteOff, midiout, channel, action);
 	}
 
-	*cc { | midiout, channel, function |
-		^this.new(\cc, midiout, channel, function);
+	*cc { | midiout, channel, action |
+		^this.new(\cc, midiout, channel, action);
 	}
 
-	value { | ... args |
-		function.valueArray(args);
+	valueAction_{ | newValue |
+		value = newValue;
+		if(outType != \cc){
+			action.value(value);
+		} /*else*/ {
+			action.value(value, delta);
+		};
+		this.outputMIDI;
+	}
+
+	outputMIDI {
 		case
-		{ outType == \noteOn or: { outType == \noteOff } }{
-			midiout.perform(outType, 0, channel, args[0]);
+		{ outType == \noteOn or: { outType == \noteOff} }{
+			midiout.perform(outType, 0, channel, value);
 		}
-		{ outType == \cc }{ }
-		{ midiout.perform(outType, channel, args[0]) };
+		{ outType == \cc}{
+			midiout.perform(\control, 0, channel, delta);
+		}
+		{ midiout.perform(outType, channel, value) };
+	}
+
+	clear {
+		action = {};
 	}
 }
 
