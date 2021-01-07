@@ -240,7 +240,7 @@ MCUPro {
 
 //Evaluates a function for each fader, vpot, transport control, and otherwise.
 MCUAction {
-	var <>outType, <>midiout, <channel, <>action;
+	var <>outType, <>midiout, <>channel, <>action;
 	var <>value = 0;
 
 	*new { | outType(\noteOn), midiout, channel(0), action({}) |
@@ -261,13 +261,6 @@ MCUAction {
 
 	*cc { | midiout, channel, action |
 		^this.new(\cc, midiout, channel+48, action);
-	}
-
-	channel_{ | newChannel(0) |
-		channel = newChannel;
-		if(outType == \cc){
-			channel = channel + 48;
-		};
 	}
 
 	valueAction_{ | newValue |
