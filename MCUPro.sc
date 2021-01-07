@@ -1,65 +1,88 @@
 MCUPro {
 	classvar <>port = 0;
 	classvar <srcID = 1835008;
-	classvar <device, <midiin, <midiout;
+	classvar <device;
+	classvar <midiin;
+	classvar <midiout;
 	classvar <isConnected = false;
 	classvar callibrator;
-
-	var <server;
-	var <midiFuncs;
-	var recorder;
-	var recFunc, <>recPath;
-	var player, <prevPath;
-	var recording;
-	var stopFunc, <playingBuffer;
-	var <faderActions;
-	var <vpotActions;
-	var <jogAction;
-	var <onActions;
-	var <offActions;
-	var <>channel = 0;
-
-	*basicNew { ^super.new }
-
-	*new {
-		var instance = this.basicNew;
-		if(MIDIClient.initialized, {
-			this.connect;
-			instance.initMCUPro;
-		}, { "MIDIClient is not initialized.".warn });
-		^instance;
-	}
+	classvar <server;
+	classvar <midiFuncs;
+	classvar recorder;
+	classvar recFunc, <>recPath;
+	classvar player, <prevPath;
+	classvar recording;
+	classvar stopFunc, <playingBuffer;
+	classvar <faderActions;
+	classvar <vpotActions;
+	classvar <jogAction;
+	classvar <onActions;
+	classvar <offActions;
+	classvar <>channel = 0;
 
 	*connect {
-		if(isConnected.not){
-			var destinations;
+		forkIfNeeded {
+			if(MIDIClient.initialized){
 
-			if(midiin.notNil and: { device.notNil }){
-				MIDIIn.disconnect(port, device);
-			};
+				if(isConnected.not){
+					var destinations;
 
-			destinations = MIDIClient.destinations;
-			block { | break |
-				destinations.do { | point |
-					if(point.name.find("MCU Pro").notNil, {
-						device = point;
-						midiout = MIDIOut(port, point.uid);
-						midiin = MIDIIn.connect(port, point);
-						break.value(999);
+					/*if(midiin.notNil and: { device.notNil }){
+						MIDIIn.disconnect(port, device);
+					};*/
+
+					destinations = MIDIClient.destinations;
+					block { | break |
+						destinations.do { | point |
+							if(point.name.find("MCU Pro").notNil, {
+								device = point;
+								midiout = MIDIOut(port, point.uid);
+								midiin = MIDIIn.connect(port, point);
+								break.value(999);
+							});
+						};
+					};
+
+					if(midiout.isNil or: { midiin.isNil } or: { device.isNil} ){
+						"Failed to connect to device.".warn;
+					} /*else*/ {
+						this.callibrate;
+						isConnected = true;
+					};
+
+					//Store reference to the default server if needed
+					server ?? { this.server = Server.default };
+
+					//Initialize MIDIFunc objects
+					this.initMIDIFuncs;
+
+					//Instantiate dictionary of actions
+					faderActions = Array.fill(9, { | i |
+						MCUAction.bend(midiout, i, {});
 					});
+
+					vpotActions = Array.fill(8, { | i |
+						MCUAction.cc(midiout, i, {});
+					});
+
+					onActions = Array.fill(127, { | i |
+						MCUAction.noteOn(midiout, i, {});
+					});
+
+					offActions = Array.fill(127, { | i |
+						MCUAction.noteOff(midiout, i, {});
+					});
+
+					jogAction = MCUAction.cc(midiout, 44, {});
+
+				} /*else*/ {
+					"Device already connected.".warn;
 				};
-			};
 
-			if(midiout.isNil or: { midiin.isNil } or: { device.isNil} ){
-				"Failed to connect to device.".warn;
-			} /*else*/ {
-				this.callibrate;
-				isConnected = true;
-			};
-		} /*else*/ {
-			"Device already connected.".warn;
+			} /*else*/{
+				"MIDIClient not initialized.".warn;
+			}
 		};
-
 	}
 
 	*callibrate { | dur(0.5) |
@@ -72,7 +95,7 @@ MCUPro {
 				callAction.channel = item;
 				callAction.valueAction = 16383;
 			};
-			dur.wait;
+			(2 * dur).wait;
 			//Then set the faders lo
 			9.do { | item |
 				callAction.channel = item;
@@ -93,18 +116,7 @@ MCUPro {
 		};
 	}
 
-	*disconnect {
-		fork{
-			this.callibrate;
-			MIDIIn.disconnect(port, device);
-			isConnected = false;
-		};
-	}
-
-	initMCUPro {
-
-		this.server_(Server.default);
-
+	*initMIDIFuncs {
 		//Set up midi functions
 		midiFuncs = IdentityDictionary.new.know_(true);
 		midiFuncs.add(\noteOn -> MIDIFunc.noteOn(
@@ -124,7 +136,7 @@ MCUPro {
 				93, { this.stopRecording }
 				);*/
 			},
-			srcID: this.class.srcID
+			srcID: srcID
 		));
 
 		midiFuncs.add(\noteOff -> MIDIFunc.noteOff(
@@ -140,14 +152,14 @@ MCUPro {
 				offActions[note][0]
 				);*/
 			},
-			srcID: this.class.srcID
+			srcID: srcID
 		));
 
 		midiFuncs.add(\bend -> MIDIFunc.bend(
 			{ | bend, note |
 				faderActions[note].valueAction = bend;
 			},
-			srcID: this.class.srcID
+			srcID: srcID
 		));
 
 		midiFuncs.add(\cc -> MIDIFunc.cc(
@@ -177,35 +189,26 @@ MCUPro {
 					jogAction.valueAction = cc.wrap(0.0, 127.0);
 				};
 			},
-			srcID: this.class.srcID
+			srcID: srcID
 		));
-
-		//Instantiate dictionary of actions
-		faderActions = Array.fill(9, { | i |
-			MCUAction.bend(midiout, i, {});
-		});
-
-		vpotActions = Array.fill(8, { | i |
-			MCUAction.cc(midiout, i, {});
-		});
-
-		onActions = Array.fill(127, { | i |
-			MCUAction.noteOn(midiout, i, {});
-		});
-
-		offActions = Array.fill(127, { | i |
-			MCUAction.noteOff(midiout, i, {});
-		});
-
-		jogAction = MCUAction.cc(midiout, 44, {});
 	}
 
-	record {
+	*disconnect {
+		fork{
+			this.callibrate;
+			MIDIIn.disconnect(port, device);
+			isConnected = false;
+			midiFuncs.asArray.do(_.free);
+			midiFuncs.clear;
+		};
+	}
+
+	*record {
 		prevPath = recPath ?? { recorder.makePath };
 		recorder.record(prevPath);
 	}
 
-	stopRecording {
+	*stopRecording {
 		if(recorder.isRecording){
 			fork{
 				recorder.stopRecording;
@@ -218,20 +221,20 @@ MCUPro {
 		}
 	}
 
-	playRecording {
+	*playRecording {
 		recording !? {
 			player = recording.play.register;
 			//Turn the play and stop buttons off when the synth is done play
 			player.onFree({
 				MIDIIn.doNoteOffAction(
-					this.class.srcID,
+					srcID,
 					94,
 					0,
 					0
 				);
 
 				MIDIIn.doNoteOffAction(
-					this.class.srcID,
+					srcID,
 					93,
 					0,
 					0
@@ -240,36 +243,30 @@ MCUPro {
 		};
 	}
 
-	server_{ | newServer |
+	*server_{ | newServer |
 		server = newServer;
 		recorder = Recorder(server);
 	}
 
-	addFaderAction { | num(0), action({}) |
+	*addFaderAction { | num(0), action({}) |
 		faderActions[ num % faderActions.size ].action = action;
 	}
 
-	addOnAction { | num(0), action({}) |
+	*addOnAction { | num(0), action({}) |
 		onActions[ num % onActions.size ].action = action;
 	}
 
-	addOffAction { | num(0), action({}) |
+	*addOffAction { | num(0), action({}) |
 		offActions[ num % offActions.size ].action = action;
 	}
 
-	addVPotAction { | vpotNum(0), action({}) |
+	*addVPotAction { | vpotNum(0), action({}) |
 		vpotActions[ vpotNum % vpotActions.size ].action = action;
 	}
 
-	addJogAction { | action({}) |
+	*addJogAction { | action({}) |
 		jogAction.action = action;
 	}
-
-	free {
-		midiFuncs.asArray.do(_.free);
-		midiFuncs.clear;
-	}
-
 }
 
 //Evaluates a function for each fader, vpot, transport control, and otherwise.
