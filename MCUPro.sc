@@ -1,12 +1,12 @@
 MCUPro {
 	classvar <>port = 0;
 	classvar <srcID = 1835008;
+	classvar <device, <midiin, <midiout;
+	classvar <isConnected = false;
+	classvar callibrator;
 
 	var <server;
-	var <midiout;
-	var midiin;
 	var <midiFuncs;
-	var callibrator;
 	var recorder;
 	var recFunc, <>recPath;
 	var player, <prevPath;
@@ -24,23 +24,84 @@ MCUPro {
 	*new {
 		var instance = this.basicNew;
 		if(MIDIClient.initialized, {
+			this.connect;
 			instance.initMCUPro;
 		}, { "MIDIClient is not initialized.".warn });
 		^instance;
 	}
 
-	initMCUPro {
-		var destinations = MIDIClient.destinations;
+	*connect {
+		if(isConnected.not){
+			var destinations;
 
-		block { | break |
-			destinations.do { | point |
-				if(point.name.find("MCU Pro").notNil, {
-					midiout = MIDIOut(this.class.port, point.uid);
-					midiin = MIDIIn.connect(this.class.port, point);
-					break.value(999);
-				});
+			if(midiin.notNil and: { device.notNil }){
+				MIDIIn.disconnect(port, device);
+			};
+
+			destinations = MIDIClient.destinations;
+			block { | break |
+				destinations.do { | point |
+					if(point.name.find("MCU Pro").notNil, {
+						device = point;
+						midiout = MIDIOut(port, point.uid);
+						midiin = MIDIIn.connect(port, point);
+						break.value(999);
+					});
+				};
+			};
+
+			if(midiout.isNil or: { midiin.isNil } or: { device.isNil} ){
+				"Failed to connect to device.".warn;
+			} /*else*/ {
+				this.callibrate;
+				isConnected = true;
+			};
+		} /*else*/ {
+			"Device already connected.".warn;
+		};
+
+	}
+
+	*callibrate { | dur(0.5) |
+		//Set the faders to top then 0.
+		if(callibrator.isPlaying, { callibrator.stop });
+		callibrator = forkIfNeeded {
+			var callAction = MCUAction.new(\bend, midiout, 0, {});
+			//Set the faders hi
+			9.do { | item |
+				callAction.channel = item;
+				callAction.valueAction = 16383;
+			};
+			dur.wait;
+			//Then set the faders lo
+			9.do { | item |
+				callAction.channel = item;
+				callAction.valueAction = 0;
+			};
+			//Turn off all of the buttons
+			callAction.outType = \noteOn;
+			127.do { | item |
+				callAction.channel = item;
+				callAction.valueAction = 0
+			};
+			//Reset all of the dials and fields
+			callAction.outType = \cc;
+			(48..75).do { | item |
+				callAction.channel = item;
+				callAction.valueAction = 0;
 			};
 		};
+	}
+
+	*disconnect {
+		fork{
+			this.callibrate;
+			MIDIIn.disconnect(port, device);
+			isConnected = false;
+		};
+	}
+
+	initMCUPro {
 
 		this.server_(Server.default);
 
@@ -137,8 +198,6 @@ MCUPro {
 		});
 
 		jogAction = MCUAction.cc(midiout, 44, {});
-
-		this.callibrate;
 	}
 
 	record {
@@ -186,24 +245,6 @@ MCUPro {
 		recorder = Recorder(server);
 	}
 
-	callibrate { | dur(0.5) |
-		//Set the faders to top then 0.
-		if(callibrator.isPlaying, { callibrator.stop });
-		callibrator = forkIfNeeded {
-			var arr =
-			faderActions.do { | item |
-				item.clear;
-				item.valueAction = 16383;
-			};
-			dur.wait;
-			(faderActions++onActions++offActions++vpotActions++[jogAction])
-			.do{ | item |
-				item.clear;
-				item.valueAction = 0;
-			};
-		};
-	}
-
 	addFaderAction { | num(0), action({}) |
 		faderActions[ num % faderActions.size ].action = action;
 	}
@@ -225,15 +266,8 @@ MCUPro {
 	}
 
 	free {
-		fork {
-			this.callibrate;
-			midiFuncs.asArray.do(_.free);
-			this.disconnect;
-		}
-	}
-
-	disconnect {
-		//disconnect midi out and in per platform
+		midiFuncs.asArray.do(_.free);
+		midiFuncs.clear;
 	}
 
 }
