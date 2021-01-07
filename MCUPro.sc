@@ -8,7 +8,6 @@ MCUPro {
 	var <midiFuncs;
 	var callibrator;
 	var recorder;
-	var <buttons, <faders;
 	var recFunc, <>recPath;
 	var player, <prevPath;
 	var recording;
