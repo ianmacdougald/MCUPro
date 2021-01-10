@@ -268,11 +268,11 @@ MCUPro {
 		faderActions[ num % faderActions.size ].action = action;
 	}
 
-	*addnoteOnAction { | num(0), action({}) |
+	*addNoteOnAction { | num(0), action({}) |
 		noteOnActions[ num % noteOnActions.size ].action = action;
 	}
 
-	*addnoteOffAction { | num(0), action({}) |
+	*addNoteOffAction { | num(0), action({}) |
 		noteOffActions[ num % noteOffActions.size ].action = action;
 	}
 
