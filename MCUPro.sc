@@ -16,8 +16,8 @@ MCUPro {
 	classvar <faderActions;
 	classvar <vpotActions;
 	classvar <jogAction;
-	classvar <onActions;
-	classvar <offActions;
+	classvar <noteOnActions;
+	classvar <noteOffActions;
 	classvar <>channel = 0;
 	classvar <>traceNoteOn = false;
 	classvar <>traceNoteOff = false;
@@ -69,11 +69,11 @@ MCUPro {
 						MCUAction.cc(midiout, i, {});
 					});
 
-					onActions = Array.fill(127, { | i |
+					noteOnActions = Array.fill(127, { | i |
 						MCUAction.noteOn(midiout, i, {});
 					});
 
-					offActions = Array.fill(127, { | i |
+					noteOffActions = Array.fill(127, { | i |
 						MCUAction.noteOff(midiout, i, {});
 					});
 
@@ -125,13 +125,13 @@ MCUPro {
 		midiFuncs = IdentityDictionary.new.know_(true);
 		midiFuncs.add(\noteOn -> MIDIFunc.noteOn(
 			{ | velocity, note, channel, id |
-				var flag = onActions[note].value;
+				var flag = noteOnActions[note].value;
 				if(flag == 127){
 					flag = 0;
 				} /*else*/{
 					flag = 127;
 				};
-				onActions[note].valueAction = flag;
+				noteOnActions[note].valueAction = flag;
 				if(traceNoteOn){
 					[ velocity, note, channel, id ].postln;
 				};
@@ -148,15 +148,15 @@ MCUPro {
 
 		midiFuncs.add(\noteOff -> MIDIFunc.noteOff(
 			{ | velocity, note, channel, id |
-				var flag = offActions[note].value;
+				var flag = noteOffActions[note].value;
 				if(flag == 127){
 					flag = 0;
 				} /*else*/ {
 					flag = 127;
 				};
-				// offActions[note].valueAction = flag;
-				/*offActions[note][1].value(
-				offActions[note][0]
+				// noteOffActions[note].valueAction = flag;
+				/*noteOffActions[note][1].value(
+				noteOffActions[note][0]
 				);*/
 				if(traceNoteOff){
 					[ velocity, note, channel, id ].postln;
@@ -242,14 +242,14 @@ MCUPro {
 			player = recording.play.register;
 			//Turn the play and stop buttons off when the synth is done play
 			player.onFree({
-				MIDIIn.doNoteOffAction(
+				MIDIIn.doNotenoteOffAction(
 					srcID,
 					94,
 					0,
 					0
 				);
 
-				MIDIIn.doNoteOffAction(
+				MIDIIn.doNotenoteOffAction(
 					srcID,
 					93,
 					0,
@@ -268,12 +268,12 @@ MCUPro {
 		faderActions[ num % faderActions.size ].action = action;
 	}
 
-	*addOnAction { | num(0), action({}) |
-		onActions[ num % onActions.size ].action = action;
+	*addnoteOnAction { | num(0), action({}) |
+		noteOnActions[ num % noteOnActions.size ].action = action;
 	}
 
-	*addOffAction { | num(0), action({}) |
-		offActions[ num % offActions.size ].action = action;
+	*addnoteOffAction { | num(0), action({}) |
+		noteOffActions[ num % noteOffActions.size ].action = action;
 	}
 
 	*addVPotAction { | vpotNum(0), action({}) |
