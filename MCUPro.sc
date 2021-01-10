@@ -19,6 +19,10 @@ MCUPro {
 	classvar <onActions;
 	classvar <offActions;
 	classvar <>channel = 0;
+	classvar <>traceNoteOn = false;
+	classvar <>traceNoteOff = false;
+	classvar <>traceBend = false;
+	classvar <>traceCC = false;
 
 	*connect {
 		forkIfNeeded {
@@ -128,6 +132,9 @@ MCUPro {
 					flag = 127;
 				};
 				onActions[note].valueAction = flag;
+				if(traceNoteOn){
+					[ velocity, note, channel, id ].postln;
+				};
 				/*		buttons[index] = 1;
 				midiout.noteOn(val[2], val[1], 127);
 				switch(val[1],
@@ -151,6 +158,9 @@ MCUPro {
 				/*offActions[note][1].value(
 				offActions[note][0]
 				);*/
+				if(traceNoteOff){
+					[ velocity, note, channel, id ].postln;
+				};
 			},
 			srcID: srcID
 		));
@@ -158,6 +168,9 @@ MCUPro {
 		midiFuncs.add(\bend -> MIDIFunc.bend(
 			{ | bend, note |
 				faderActions[note].valueAction = bend;
+				if(traceBend){
+					[ bend, note ].postln;
+				};
 			},
 			srcID: srcID
 		));
@@ -187,6 +200,9 @@ MCUPro {
 						cc = cc - 1;
 					};
 					jogAction.valueAction = cc.wrap(0.0, 127.0);
+				};
+				if(traceCC){
+					[ delta, note ].postln;
 				};
 			},
 			srcID: srcID
