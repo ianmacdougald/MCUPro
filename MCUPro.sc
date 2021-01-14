@@ -312,8 +312,8 @@ MCUAction {
 
 	valueAction_{ | newValue |
 		value = newValue;
-		action.value(value);
 		this.outputMIDI;
+		action.value(value);
 	}
 
 	outputMIDI {
