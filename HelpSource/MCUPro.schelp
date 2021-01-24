@@ -1,9 +1,22 @@
-TITLE::MCUPro 
-summary::Interface for the Mackie Control Universal Pro 
+TITLE::MCUPro
+summary::Interface for the Mackie Control Universal Pro
 categories::Libraries>Ian Stuff
-related::
+related::Classes/MIDIClient
 keyword::mcu, midi, controller
 
 DESCRIPTION::
-MCUPro is an interface for communicating with and from a Mackie Control Universal Pro MIDI controller. Specifically, it aims to streamline the process of connecting its various faders, buttons, and dials to sclang, providing 
+MCUPro is an interface for communicating with and from a Mackie Control Universal Pro MIDI controller. Specifically, it aims to streamline the process of connecting its various faders, buttons, and dials to sclang, providing
 
+classmethods::
+
+method::connect
+Connects client to MCUPro controller.
+argument::whatever...
+Does stuff
+
+
+
+INSTANCEMETHODS::
+
+method::free
+Like object method link::Classes/Object#-free::
