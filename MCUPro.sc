@@ -8,11 +8,11 @@ MCUPro {
 	classvar callibrator;
 	classvar <>server;
 	classvar <midiFuncs;
-	classvar <faderActions;
-	classvar <vpotActions;
-	classvar <jogAction;
-	classvar <noteOnActions;
-	classvar <noteOffActions;
+	classvar faderActions;
+	classvar vpotActions;
+	classvar jogAction;
+	classvar noteOnActions;
+	classvar noteOffActions;
 	classvar <>channel = 0;
 	classvar <>traceNoteOn = false;
 	classvar <>traceNoteOff = false;
@@ -27,7 +27,7 @@ MCUPro {
 					var destinations;
 
 					/*if(midiin.notNil and: { device.notNil }){
-						MIDIIn.disconnect(port, device);
+					MIDIIn.disconnect(port, device);
 					};*/
 
 					destinations = MIDIClient.destinations;
@@ -50,7 +50,7 @@ MCUPro {
 					};
 
 					//Store reference to the default server if needed
-					server ?? { this.server = Server.default };
+					server = server ? Server.default;
 
 					//Initialize MIDIFunc objects
 					this.initMIDIFuncs;
@@ -137,16 +137,7 @@ MCUPro {
 
 		midiFuncs.add(\noteOff -> MIDIFunc.noteOff(
 			{ | velocity, note, channel, id |
-				var flag = noteOffActions[note].value;
-				if(flag == 127){
-					flag = 0;
-				} /*else*/ {
-					flag = 127;
-				};
-				// noteOffActions[note].valueAction = flag;
-				/*noteOffActions[note][1].value(
-				noteOffActions[note][0]
-				);*/
+				noteOffActions[note].valueAction = velocity;
 				if(traceNoteOff){
 					[ velocity, note, channel, id ].postln;
 				};
@@ -234,6 +225,54 @@ MCUPro {
 	*addJogAction { | action({}) |
 		jogAction.action = action;
 	}
+
+	*setFader { | num(0), val(0) |
+		faderActions [ num.clip(0, faderActions.size - 1) ]
+		.valueAction_(val.clip(0, 16383));
+	}
+
+	*setFaderNoAction { | num(0), val(0) |
+		faderActions [ num.clip(0, faderActions.size - 1) ]
+		.valueNoAction_(val.clip(0, 16383));
+	}
+
+	*setNoteOn { | num(0), val(127) |
+		noteOnActions [ num.clip(0, noteOnActions.size - 1) ]
+		.valueAction_(val.clip(0, 127));
+	}
+
+	*setNoteOnNoAction { | num(0), val(127) |
+		noteOnActions [ num.clip(0, noteOnActions.size - 1) ]
+		.valueNoAction_(val.clip(0, 127));
+	}
+
+	*setNoteOff { | num(0), val(0) |
+		noteOffActions [ num.clip(0, noteOffActions.size - 1) ]
+		.valueAction_(val.clip(0, 127));
+	}
+
+	*setNoteOffNoAction { | num(0), val(0) |
+		noteOffActions [ num.clip(0, noteOffActions.size - 1) ]
+		.valueNoAction_(val.clip(0, 127));
+	}
+
+	*setVPot { | num(0), val(0) |
+		vpotActions [ num.clip(0, vpotActions.size - 1) ]
+		.valueAction_(val.clip(0, 127))
+	}
+
+	*setVPotNoAction { | num(0), val(0) |
+		vpotActions [ num.clip(0, vpotActions.size - 1) ]
+		.valueNoAction_(val.clip(0, 127))
+	}
+
+	*setJog { | val |
+		jogAction.valueAction_(val.wrap(0, 127));
+	}
+
+	*setJogNoAction { | val |
+		jogAction.valueNoAction_(val.wrap(0, 127));
+	}
 }
 
 //Evaluates a function for each fader, vpot, transport control, and otherwise.
@@ -265,6 +304,11 @@ MCUAction {
 		value = newValue;
 		this.outputMIDI;
 		action.value(value);
+	}
+
+	valueNoAction_{ | newValue |
+		value = newValue;
+		this.outputMIDI;
 	}
 
 	outputMIDI {
