@@ -122,6 +122,7 @@ MCUPro {
 
 	*initMIDIFuncs {
 		//Set up midi functions
+		midiFuncs !? { midiFuncs.asArray.do(_.free) };
 		midiFuncs = IdentityDictionary.new.know_(true);
 		midiFuncs.add(\noteOn -> MIDIFunc.noteOn(
 			{ | velocity, note, channel, id |
@@ -210,12 +211,19 @@ MCUPro {
 	}
 
 	*disconnect {
-		fork{
+		forkIfNeeded {
 			this.callibrate;
 			MIDIIn.disconnect(port, device);
 			isConnected = false;
 			midiFuncs.asArray.do(_.free);
 			midiFuncs.clear;
+		};
+	}
+
+	*reconnect {
+		forkIfNeeded {
+			this.disconnect;
+			this.connect;
 		};
 	}
 
