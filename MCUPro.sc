@@ -6,13 +6,8 @@ MCUPro {
 	classvar <midiout;
 	classvar <isConnected = false;
 	classvar callibrator;
-	classvar <server;
+	classvar <>server;
 	classvar <midiFuncs;
-	classvar recorder;
-	classvar recFunc, <>recPath;
-	classvar player, <prevPath;
-	classvar recording;
-	classvar stopFunc, <playingBuffer;
 	classvar <faderActions;
 	classvar <vpotActions;
 	classvar <jogAction;
@@ -136,13 +131,6 @@ MCUPro {
 				if(traceNoteOn){
 					[ velocity, note, channel, id ].postln;
 				};
-				/*		buttons[index] = 1;
-				midiout.noteOn(val[2], val[1], 127);
-				switch(val[1],
-				95, { this.record },
-				94, { this.playRecording },
-				93, { this.stopRecording }
-				);*/
 			},
 			srcID: srcID
 		));
@@ -225,51 +213,6 @@ MCUPro {
 			this.disconnect;
 			this.connect;
 		};
-	}
-
-	*record {
-		prevPath = recPath ?? { recorder.makePath };
-		recorder.record(prevPath);
-	}
-
-	*stopRecording {
-		if(recorder.isRecording){
-			fork{
-				recorder.stopRecording;
-				server.sync;
-				recording = Buffer.read(
-					server,
-					prevPath,
-				);
-			}
-		}
-	}
-
-	*playRecording {
-		recording !? {
-			player = recording.play.register;
-			//Turn the play and stop buttons off when the synth is done play
-			player.onFree({
-				MIDIIn.doNotenoteOffAction(
-					srcID,
-					94,
-					0,
-					0
-				);
-
-				MIDIIn.doNotenoteOffAction(
-					srcID,
-					93,
-					0,
-					0
-				);
-			});
-		};
-	}
-
-	*server_{ | newServer |
-		server = newServer;
-		recorder = Recorder(server);
 	}
 
 	*addFaderAction { | num(0), action({}) |
