@@ -273,6 +273,12 @@ MCUPro {
 	*setJogNoAction { | val |
 		jogAction.valueNoAction_(val.wrap(0, 127));
 	}
+
+	*panic { 
+		noteOnActions.do { | action |
+			action.valueNoAction_(0);
+		};
+	}
 }
 
 //Evaluates a function for each fader, vpot, transport control, and otherwise.
