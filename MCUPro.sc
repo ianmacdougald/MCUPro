@@ -1,6 +1,6 @@
 MCUPro {
 	classvar <>port = 0;
-	classvar <srcID = 1835008;
+	classvar <srcID;
 	classvar <device;
 	classvar <midiin;
 	classvar <midiout;
@@ -35,7 +35,8 @@ MCUPro {
 						destinations.do { | point |
 							if(point.name.find("MCU Pro").notNil, {
 								device = point;
-								midiout = MIDIOut(port, point.uid);
+								srcID = point.uid;
+								midiout = MIDIOut(port, srcID);
 								midiin = MIDIIn.connect(port, point);
 								break.value(999);
 							});
@@ -179,10 +180,11 @@ MCUPro {
 					} /*else*/ {
 						cc = cc - 1;
 					};
-					jogAction.valueAction = cc.wrap(0.0, 127.0);
+					jogAction.valueAction = cc.clip(0.0, 127.0);
+					// jogAction.valueAction = cc.wrap(0.0, 127.0).clip(0.0, 127.0);
 				};
 				if(traceCC){
-					[ delta, note ].postln;
+					[ cc, note ].postln;
 				};
 			},
 			srcID: srcID
@@ -274,7 +276,7 @@ MCUPro {
 		jogAction.valueNoAction_(val.wrap(0, 127));
 	}
 
-	*panic { 
+	*panic {
 		noteOnActions.do { | action |
 			action.valueNoAction_(0);
 		};
