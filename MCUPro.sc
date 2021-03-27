@@ -405,7 +405,7 @@ MCUProProject : CodexSingelton {
 		var path = Main.packages.asDict.at(\MCUPro);
 		this.makeTemplate(
 			templateName,
-			path+/+"configTemplate.scd"
+			path+/+"configuration.scd"
 		);
 	}
 }
