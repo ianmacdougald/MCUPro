@@ -91,25 +91,25 @@ MCUPro {
 			//Set the faders hi
 			9.do { | item |
 				callAction.channel = item;
-				callAction.valueAction = 16383;
+				callAction.valueNoAction = 16383;
 			};
 			(2 * dur).wait;
 			//Then set the faders lo
 			9.do { | item |
 				callAction.channel = item;
-				callAction.valueAction = 0;
+				callAction.valueNoAction = 0;
 			};
 			//Turn off all of the buttons
 			callAction.outType = \noteOn;
 			127.do { | item |
 				callAction.channel = item;
-				callAction.valueAction = 0
+				callAction.valueNoAction = 0
 			};
 			//Reset all of the dials and fields
 			callAction.outType = \cc;
 			(48..75).do { | item |
 				callAction.channel = item;
-				callAction.valueAction = 0;
+				callAction.valueNoAction = 0;
 			};
 		};
 	}
