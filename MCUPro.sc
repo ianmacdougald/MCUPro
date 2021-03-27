@@ -20,69 +20,67 @@ MCUPro {
 	classvar <>traceCC = false;
 
 	*connect {
-		forkIfNeeded {
-			if(MIDIClient.initialized){
+		if(MIDIClient.initialized){
 
-				if(isConnected.not){
-					var destinations;
+			if(isConnected.not){
+				var destinations;
 
-					/*if(midiin.notNil and: { device.notNil }){
-					MIDIIn.disconnect(port, device);
-					};*/
+				/*if(midiin.notNil and: { device.notNil }){
+				MIDIIn.disconnect(port, device);
+				};*/
 
-					destinations = MIDIClient.destinations;
-					block { | break |
-						destinations.do { | point |
-							if(point.name.find("MCU Pro").notNil, {
-								device = point;
-								srcID = point.uid;
-								midiout = MIDIOut(port, srcID);
-								midiin = MIDIIn.connect(port, point);
-								break.value(999);
-							});
-						};
+				destinations = MIDIClient.destinations;
+				block { | break |
+					destinations.do { | point |
+						if(point.name.find("MCU Pro").notNil, {
+							device = point;
+							srcID = point.uid;
+							midiout = MIDIOut(port, srcID);
+							midiin = MIDIIn.connect(port, point);
+							break.value(999);
+						});
 					};
-
-					if(midiout.isNil or: { midiin.isNil } or: { device.isNil} ){
-						"Failed to connect to device.".warn;
-					} /*else*/ {
-						this.callibrate;
-						isConnected = true;
-					};
-
-					//Store reference to the default server if needed
-					server = server ? Server.default;
-
-					//Initialize MIDIFunc objects
-					this.initMIDIFuncs;
-
-					//Instantiate dictionary of actions
-					faderActions = Array.fill(9, { | i |
-						MCUAction.bend(midiout, i, {});
-					});
-
-					vpotActions = Array.fill(8, { | i |
-						MCUAction.cc(midiout, i, {});
-					});
-
-					noteOnActions = Array.fill(127, { | i |
-						MCUAction.noteOn(midiout, i, {});
-					});
-
-					noteOffActions = Array.fill(127, { | i |
-						MCUAction.noteOff(midiout, i, {});
-					});
-
-					jogAction = MCUAction.cc(midiout, 44, {});
-
-				} /*else*/ {
-					"Device already connected.".warn;
 				};
 
-			} /*else*/{
-				"MIDIClient not initialized.".warn;
-			}
-		};
+				if(midiout.isNil or: { midiin.isNil } or: { device.isNil} ){
+					"Failed to connect to device.".warn;
+				} /*else*/ {
+					this.callibrate;
+					isConnected = true;
+				};
+
+				//Store reference to the default server if needed
+				server = server ? Server.default;
+
+				//Initialize MIDIFunc objects
+				this.initMIDIFuncs;
+
+				//Instantiate dictionary of actions
+				faderActions = Array.fill(9, { | i |
+					MCUAction.bend(midiout, i, {});
+				});
+
+				vpotActions = Array.fill(8, { | i |
+					MCUAction.cc(midiout, i, {});
+				});
+
+				noteOnActions = Array.fill(127, { | i |
+					MCUAction.noteOn(midiout, i, {});
+				});
+
+				noteOffActions = Array.fill(127, { | i |
+					MCUAction.noteOff(midiout, i, {});
+				});
+
+				jogAction = MCUAction.cc(midiout, 44, {});
+
+			} /*else*/ {
+				"Device already connected.".warn;
+			};
+
+		} /*else*/{
+			Error("MIDIClient not initialized.").throw;
+		}
 	}
 
 	*callibrate { | dur(0.5) |
@@ -199,6 +197,7 @@ MCUPro {
 				isConnected = false;
 				midiFuncs.asArray.do(_.free);
 				midiFuncs.clear;
+				this.clearAll;
 			};
 		};
 	}
@@ -375,19 +374,21 @@ MCUWriter { }
 MCUGui { }
 
 MCUProProject : CodexSingelton {
-	classvar connected;
+	classvar >object;
+
+	*new { | moduleSet, from |
+		this.connect;
+		super.new(moduleSet, from);
+	}
 
 	*makeTemplates { | templater |
 		templater.mcuConfig("configuration");
 	}
 
-	*initSingelton {
+	*connect {
 		if(MCUPro.isConnected.not){
-			if(MIDIClient.initialized.not){
-				MIDIClient.init;
-			};
 			MCUPro.connect;
-		};
+		}{ MCUPro.clearAll }
 	}
 
 	*disconnect { MCUPro.disconnect }
@@ -397,6 +398,8 @@ MCUProProject : CodexSingelton {
 	*openConfig { this.open('configuration') }
 
 	*configure { this.reloadScripts }
+
+	*panic { MCUPro.panic }
 
 }
 
