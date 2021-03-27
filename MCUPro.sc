@@ -192,12 +192,14 @@ MCUPro {
 	}
 
 	*disconnect {
-		forkIfNeeded {
-			this.callibrate;
-			MIDIIn.disconnect(port, device);
-			isConnected = false;
-			midiFuncs.asArray.do(_.free);
-			midiFuncs.clear;
+		if(isConnected){
+			forkIfNeeded {
+				this.callibrate;
+				MIDIIn.disconnect(port, device);
+				isConnected = false;
+				midiFuncs.asArray.do(_.free);
+				midiFuncs.clear;
+			};
 		};
 	}
 
@@ -281,6 +283,34 @@ MCUPro {
 			action.valueNoAction_(0);
 		};
 	}
+
+	*clearFaderActions {
+		faderActions.do(_.clear);
+	}
+
+	*clearNoteOnActions {
+		noteOnActions.do(_.clear);
+	}
+
+	*clearNoteOffActions {
+		noteOffActions.do(_.clear);
+	}
+
+	*clearVPotActions {
+		vpotActions.do(_.clear);
+	}
+
+	*clearJogAction {
+		jogAction.clear;
+	}
+
+	*clearAll {
+		this.clearFaderActions;
+		this.clearNoteOnActions;
+		this.clearNoteOffActions;
+		this.clearVPotActions;
+		this.clearJogAction;
+	}
 }
 
 //Evaluates a function for each fader, vpot, transport control, and otherwise.
@@ -343,3 +373,39 @@ MCUWriter { }
 
 //Emulates the MCUPro
 MCUGui { }
+
+MCUProProject : CodexSingelton {
+	classvar connected;
+
+	*makeTemplates { | templater |
+		templater.mcuConfig("configuration");
+	}
+
+	*initSingelton {
+		if(MCUPro.isConnected.not){
+			if(MIDIClient.initialized.not){
+				MIDIClient.init;
+			};
+			MCUPro.connect;
+		};
+	}
+
+	*disconnect { MCUPro.disconnect }
+
+	*initMIDIFuncs { MCUPro.initMIDIFuncs }
+
+	*openConfig { this.open('configuration') }
+
+	*configure { this.reloadScripts }
+
+}
+
++ CodexTemplater {
+	mcuConfig { | templateName("configuration") |
+		var path = Main.packages.asDict.at(\MCUPro);
+		this.makeTemplate(
+			templateName,
+			path+/+"configTemplate.scd"
+		);
+	}
+}
