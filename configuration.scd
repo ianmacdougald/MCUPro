@@ -10,10 +10,6 @@ var synth;
 var freqlo = 128;
 var freqhi = 2048;
 
-if(Server.default.hasBooted.not){
-	format("server '%' not running.", s).warn;
-};
-
 //---------------------------
 //FADERS---------------------
 //---------------------------
@@ -90,15 +86,17 @@ MCUPro.addNoteOnAction(94, { arg val;
 		MCUPro.setJogNoAction(5.0.explin(0.5, 128, 0.0, 127.0));
 
 		//Play the synth
-		synth = play {
-			SinOsc.ar(
-				\freq.kr(400, 0.1) * LFTri.kr(\vibrate.kr(5.0, 0.1))
-				.unipolar(\vibamp.kr(1.0, 0.1)).midiratio,
-				0,
-				\amp.kr(0.8, 0.1)
-			) ! 2;
-		};
-		synth.register;
+		if(Server.default.hasBooted){
+			synth = play {
+				SinOsc.ar(
+					\freq.kr(400, 0.1) * LFTri.kr(\vibrate.kr(5.0, 0.1))
+					.unipolar(\vibamp.kr(1.0, 0.1)).midiratio,
+					0,
+					\amp.kr(0.8, 0.1)
+				) ! 2;
+			};
+			synth.register;
+		}{ format("server '%' not running.", s).warn };
 	}{
 		//Engage the stop button
 		MCUPro.setNoteOn(93, 127);
