@@ -83,7 +83,7 @@ MCUPro {
 		}
 	}
 
-	*callibrate { | dur(0.5) |
+	*callibrate { | dur(0.25) |
 		//Set the faders to top then 0.
 		if(callibrator.isPlaying, { callibrator.stop });
 		callibrator = forkIfNeeded {
@@ -381,6 +381,16 @@ MCUProProject : CodexSingelton {
 		super.new(moduleSet, from);
 	}
 
+	*initSingelton {
+		MCUPro.initMIDIFuncs;
+		this.modules[\configuration].value;
+	}
+
+	//Overload so that the module objects are not evaluated
+	*addModules { | key |
+		this.cache.add(key -> CodexModules(this.asPath(key)));
+	}
+
 	*makeTemplates { | templater |
 		templater.mcuConfig("configuration");
 	}
@@ -396,8 +406,6 @@ MCUProProject : CodexSingelton {
 	*initMIDIFuncs { MCUPro.initMIDIFuncs }
 
 	*openConfig { this.open('configuration') }
-
-	*configure { this.reloadScripts }
 
 	*panic { MCUPro.panic }
 
