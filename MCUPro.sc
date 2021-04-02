@@ -383,7 +383,7 @@ MCUProProject : CodexSingelton {
 
 	*initSingelton {
 		MCUPro.initMIDIFuncs;
-		this.modules[\configuration].value;
+		this.configure;
 	}
 
 	//Overload so that the module objects are not evaluated
@@ -406,6 +406,10 @@ MCUProProject : CodexSingelton {
 	*initMIDIFuncs { MCUPro.initMIDIFuncs }
 
 	*openConfig { this.open('configuration') }
+
+	*configure {
+		this.modules['configuration'].value;
+	}
 
 	*panic { MCUPro.panic }
 
